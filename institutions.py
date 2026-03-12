@@ -1,0 +1,171 @@
+# 北海道内金融機関リスト
+# news_paths: プレスリリース・お知らせページのURLパス候補（優先順）
+
+INSTITUTIONS = [
+    # ===== 銀行 =====
+    {
+        "name": "北洋銀行",
+        "type": "銀行",
+        "url": "https://www.hokuyobank.co.jp",
+        "news_paths": ["/news/", "/topics/", "/newsrelease/", "/news/index.html"],
+        "rss_paths": ["/rss/news.xml", "/feed/", "/rss.xml"],
+    },
+    {
+        "name": "北海道銀行",
+        "type": "銀行",
+        "url": "https://www.hokkaidobank.co.jp",
+        "news_paths": ["/news/", "/topics/", "/release/", "/information/"],
+        "rss_paths": ["/rss/", "/feed/", "/rss.xml"],
+    },
+
+    # ===== 信用金庫 =====
+    {
+        "name": "北海道信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/hokkaido",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "室蘭信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/muroshin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "空知信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/sorachi",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "苫小牧信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/tomashin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "北門信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/hokumon",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "伊達信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/dateshin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "北空知信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/kitashin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "日高信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/hidaka",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "渡島信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/oshima",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "道南うみ街信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.d-umishin.co.jp",
+        "news_paths": ["/news/", "/topics/", "/info/", "/newsrelease/", "/"],
+        "rss_paths": ["/feed/", "/rss/", "/rss.xml"],
+    },
+    {
+        "name": "旭川信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/ask",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "稚内信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/wakashin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "留萌信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/rumoi",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "北星信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.hokusei-shinkin.co.jp",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": ["/feed/", "/rss/", "/rss.xml"],
+    },
+    {
+        "name": "帯広信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/obishin",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "釧路信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/kushiro",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "大地みらい信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.daichimirai.co.jp",
+        "news_paths": ["/news/", "/topics/", "/info/", "/newsrelease/", "/"],
+        "rss_paths": ["/feed/", "/rss/", "/rss.xml"],
+    },
+    {
+        "name": "北見信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/kitami",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "網走信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/abashiri",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+    {
+        "name": "遠軽信用金庫",
+        "type": "信用金庫",
+        "url": "https://www.shinkin.co.jp/engaru",
+        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "rss_paths": [],
+    },
+
+    # ===== 信用組合 =====
+    {
+        "name": "十勝信用組合",
+        "type": "信用組合",
+        "url": "https://www.tokachishinkumi.com",
+        "news_paths": ["/news/", "/topics/", "/info/", "/newsrelease/", "/"],
+        "rss_paths": ["/feed/", "/rss/", "/rss.xml"],
+    },
+]
