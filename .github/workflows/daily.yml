@@ -9,6 +9,8 @@ on:
 jobs:
   collect-and-send:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # seen_releases.jsonをコミット・プッシュするために必要
     env:
       TZ: Asia/Tokyo  # 曜日・日付判定をJSTで行う
 
