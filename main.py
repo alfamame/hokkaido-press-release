@@ -3,8 +3,8 @@
 毎朝8時にWindowsタスクスケジューラから実行される想定
 
 動作ルール:
-    月〜土: 前日分のプレスリリースを収集してメール送信
-    日曜日: 配信しない（スキップ）
+    月〜金: 前営業日分のプレスリリースを収集してメール送信（月曜は金曜分）
+    土・日: 配信しない（スキップ）
 
 使い方:
     python main.py                 # 通常実行
@@ -75,23 +75,28 @@ def main():
     args = parser.parse_args()
 
     today = datetime.now()
-    yesterday = (today - timedelta(days=1)).date()
+    weekday = today.weekday()  # 0=月, 1=火, ..., 5=土, 6=日
 
     logger.info("=" * 60)
     logger.info("北海道金融機関 プレスリリース収集開始")
 
-    # 日曜日は配信しない（--force で強制実行可）
-    if today.weekday() == 6 and not args.force:
-        logger.info("本日は日曜日のため配信をスキップします。")
+    # 土・日は配信しない（--force で強制実行可）
+    if weekday >= 5 and not args.force:
+        day_name = "土曜日" if weekday == 5 else "日曜日"
+        logger.info(f"本日は{day_name}のため配信をスキップします。")
         logger.info("=" * 60)
         sys.exit(0)
 
-    logger.info(f"対象機関数: {len(INSTITUTIONS)}、収集対象日: {yesterday}")
+    # 前営業日を算出（月曜日は金曜日=3日前、それ以外は前日）
+    days_back = 3 if weekday == 0 else 1
+    target_date = (today - timedelta(days=days_back)).date()
+
+    logger.info(f"対象機関数: {len(INSTITUTIONS)}、収集対象日: {target_date}（前営業日）")
     if args.test:
         logger.info("[テストモード] メールは送信しません")
 
-    # 1. 前日分のプレスリリースを収集（余裕を持って48時間前まで取得し、後で日付フィルタ）
-    releases = fetch_all(INSTITUTIONS, target_date=yesterday)
+    # 1. 前営業日分のプレスリリースを収集（余裕を持って取得し、後で日付フィルタ）
+    releases = fetch_all(INSTITUTIONS, target_date=target_date)
 
     # 2. 既読フィルタ
     seen_urls = load_seen_urls()
