@@ -4,7 +4,6 @@ credentials.json
 token.json
 
 # 自動生成ファイル
-seen_releases.json
 *.log
 
 # Python

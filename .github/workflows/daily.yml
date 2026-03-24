@@ -1,0 +1,41 @@
+name: 北海道金融機関 プレスリリース収集・送信
+
+on:
+  schedule:
+    # 月〜金 7:00 JST = UTC 日〜木 22:00
+    - cron: '0 22 * * 0-4'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  collect-and-send:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Tokyo  # 曜日・日付判定をJSTで行う
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 依存パッケージインストール
+        run: pip install -r requirements.txt
+
+      - name: プレスリリース収集・送信
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: python main.py
+
+      - name: 既読リストをリポジトリにコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_releases.json
+          git diff --staged --quiet || git commit -m "chore: 既読リスト更新 [skip ci]"
+          git push
