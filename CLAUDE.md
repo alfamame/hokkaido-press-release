@@ -14,9 +14,14 @@ python main.py --test
 # 強制実行（曜日・既読フィルタをスキップ、動作確認用）
 python main.py --force
 
+# デバッグ推奨: 両フラグ併用（曜日・既読スキップ＋メール送信なし）
+python main.py --test --force
+
 # 依存パッケージインストール
 pip install -r requirements.txt
 ```
+
+終了コード: 0 = 成功（または新着なし）、1 = メール送信失敗
 
 ## Architecture Overview
 
@@ -37,6 +42,17 @@ pip install -r requirements.txt
 - HTMLフォールバック: 機関ごとの `news_paths` + 共通パスを試行、`<li>/<tr>/<article>` 等から日付付きリンクを抽出
 - カットオフ: 対象日の前日00:00以降を取得してから、対象日のみに絞る
 - リクエスト間隔: 1.0秒（`REQUEST_DELAY`）
+- **`shinkin.co.jp` 共有ドメイン**: 複数の信用金庫が `https://www.shinkin.co.jp/{slug}` を共有している。`_extract_from_soup` の外部ドメイン除外ロジックでこのドメインは特別扱い（除外しない）
+
+`PressRelease` データクラスのフィールド:
+```python
+institution: str        # 機関名
+institution_type: str   # "銀行" | "信用金庫" | "信用組合"
+title: str
+url: str
+date: Optional[datetime]
+summary: str = ""       # Claude APIによる要約（初期値は空文字）
+```
 
 ### 機関定義（institutions.py）
 
@@ -46,10 +62,14 @@ pip install -r requirements.txt
     "name": "機関名",
     "type": "銀行"|"信用金庫"|"信用組合",
     "url": "https://...",
-    "news_paths": [...],  # HTMLページのパス候補（優先順）
-    "rss_paths": [...],   # RSSフィードのパス候補
+    "news_paths": [...],  # HTMLページのパス候補（優先順）。空リストでも共通パスが自動追加される
+    "rss_paths": [...],   # RSSフィードのパス候補。空リストでも共通パスが自動追加される
 }
 ```
+
+### 要約（summarizer.py）
+
+全プレスリリースを1回のAPIコール（バッチ）でまとめて要約する。レスポンスはJSON形式で受け取り、インデックスで各 `PressRelease.summary` に紐付ける。API失敗時は要約なしでそのまま処理続行。
 
 ### 環境変数（.env）
 
