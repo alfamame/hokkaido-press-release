@@ -2,8 +2,8 @@
 
 ## 概要
 
-北海道内の銀行・信用金庫・信用組合のプレスリリースを毎朝8時に自動収集し、
-`eigyo@obihiro.shinkin.jp` へメール送信するシステムです。
+北海道内の銀行・信用金庫・信用組合のプレスリリースを毎朝自動収集し、
+指定のメールアドレスへ送信するシステムです。
 
 ---
 
@@ -57,7 +57,7 @@ python gmail_setup.py
 #### 3-3. .env に送信元アドレスを追記
 
 ```
-SENDER_EMAIL=あなたのgmail@gmail.com
+GMAIL_ADDRESS=あなたのgmail@gmail.com
 ```
 
 ---
@@ -124,4 +124,4 @@ A: `institutions.py` の `news_paths` にそのサイトのお知らせページ
 A: `.env` の `ANTHROPIC_API_KEY` を空にすると要約なしで送信されます。
 
 **Q: 送信先を変更したい場合は？**
-A: `config.py` の `RECIPIENT_EMAIL` を編集してください。
+A: `.env` の `RECIPIENT_EMAIL` を編集してください。
