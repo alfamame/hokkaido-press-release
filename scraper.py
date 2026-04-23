@@ -27,11 +27,15 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
-# 日本語日付パターン
+# 日本語日付パターン（西暦）
 DATE_PATTERNS = [
-    re.compile(r'(\d{4})[年/\-.](\d{1,2})[月/\-.](\d{1,2})日?'),
+    re.compile(r'(\d{4})[年/\-.]\s*(\d{1,2})[月/\-.]\s*(\d{1,2})日?'),
     re.compile(r'(\d{4})(\d{2})(\d{2})'),  # 20260311形式
 ]
+
+# 令和元号パターン（令和N年 = N + 2018）
+REIWA_PATTERN = re.compile(r'令和\s*(\d{1,2})年\s*(\d{1,2})月\s*(\d{1,2})日')
+_REIWA_BASE = 2018
 
 
 @dataclass
@@ -56,10 +60,19 @@ def _parse_date(text: str) -> Optional[datetime]:
         if m:
             try:
                 y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-                if 2020 <= y <= 2030 and 1 <= mo <= 12 and 1 <= d <= 31:
+                if 2020 <= y <= 2035 and 1 <= mo <= 12 and 1 <= d <= 31:
                     return datetime(y, mo, d)
             except (ValueError, OverflowError):
                 pass
+    m = REIWA_PATTERN.search(text)
+    if m:
+        try:
+            y = int(m.group(1)) + _REIWA_BASE
+            mo, d = int(m.group(2)), int(m.group(3))
+            if 2020 <= y <= 2035 and 1 <= mo <= 12 and 1 <= d <= 31:
+                return datetime(y, mo, d)
+        except (ValueError, OverflowError):
+            pass
     return None
 
 
