@@ -44,7 +44,7 @@ INSTITUTIONS = [
         "name": "苫小牧信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/tomashin",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/index.htm"],
         "rss_paths": [],
     },
     {
@@ -64,22 +64,22 @@ INSTITUTIONS = [
     {
         "name": "北空知信用金庫",
         "type": "信用金庫",
-        "url": "https://www.shinkin.co.jp/kitashin",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "url": "https://www.kitashin-bank.co.jp",
+        "news_paths": ["/news/"],
         "rss_paths": [],
     },
     {
         "name": "日高信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/hidaka",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/"],
         "rss_paths": [],
     },
     {
         "name": "渡島信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/oshima",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/_news/history.html", "/news/", "/topics/", "/info/", "/"],
         "rss_paths": [],
     },
     {
@@ -128,8 +128,10 @@ INSTITUTIONS = [
         "name": "釧路信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/kushiro",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/_news/history.html"],
         "rss_paths": [],
+        # _news/history.html のリンクが親ディレクトリ(kushiro/)基準の相対パスのため
+        "link_base": "https://www.shinkin.co.jp/kushiro/",
     },
     {
         "name": "大地みらい信用金庫",
@@ -142,7 +144,7 @@ INSTITUTIONS = [
         "name": "北見信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/kitami",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/"],
         "rss_paths": [],
     },
     {

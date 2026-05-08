@@ -37,6 +37,9 @@ DATE_PATTERNS = [
 REIWA_PATTERN = re.compile(r'令和\s*(\d{1,2})年\s*(\d{1,2})月\s*(\d{1,2})日')
 _REIWA_BASE = 2018
 
+# URLに埋め込まれた日付パターン（例: _20260331.pdf, -20260219.html）
+URL_DATE_PATTERN = re.compile(r'[_\-](\d{4})(\d{2})(\d{2})(?:[_.\-]|$)')
+
 
 @dataclass
 class PressRelease:
@@ -151,7 +154,7 @@ def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cu
     # ニュース・お知らせ系の要素を探す
     # パターン1: <li>や<dt>の中に日付とリンクがある
     # パターン2: <tr>の中に日付とリンクがある
-    candidates = soup.find_all(["li", "dt", "tr", "article", "div"], limit=300)
+    candidates = soup.find_all(["li", "dt", "tr", "article", "div", "p"], limit=500)
 
     for tag in candidates:
         text = tag.get_text(" ", strip=True)
@@ -203,6 +206,80 @@ def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cu
             date=date,
         ))
 
+    # パターン3: <dt>に日付、隣接する<dd>にリンクがある場合（北見信用金庫等）
+    for dt_tag in soup.find_all("dt"):
+        text = dt_tag.get_text(" ", strip=True)
+        if len(text) < 4 or len(text) > 100:
+            continue
+        date = _parse_date(text)
+        if not date or date < cutoff:
+            continue
+        dd_tag = dt_tag.find_next_sibling("dd")
+        if not dd_tag:
+            continue
+        link_tag = dd_tag.find("a", href=True)
+        if not link_tag:
+            continue
+        href = link_tag["href"].strip()
+        if not href or href.startswith("#") or href.startswith("javascript"):
+            continue
+        full_url = urljoin(page_url, href)
+        if full_url in seen_urls:
+            continue
+        seen_urls.add(full_url)
+        title = link_tag.get_text(strip=True)
+        if not title or len(title) < 4:
+            continue
+        parsed = urlparse(full_url)
+        base_parsed = urlparse(base_url)
+        if parsed.netloc and parsed.netloc != base_parsed.netloc:
+            if "shinkin.co.jp" not in parsed.netloc and "shinkin.co.jp" not in base_parsed.netloc:
+                continue
+        results.append(PressRelease(
+            institution=institution["name"],
+            institution_type=institution["type"],
+            title=title,
+            url=full_url,
+            date=date,
+        ))
+
+    # パターン4: リンクのURL自体に日付が含まれる場合（日高信用金庫等、_YYYYMMDDパターン）
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href.startswith("#") or href.startswith("javascript"):
+            continue
+        m = URL_DATE_PATTERN.search(href)
+        if not m:
+            continue
+        try:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if not (2020 <= y <= 2035 and 1 <= mo <= 12 and 1 <= d <= 31):
+                continue
+            date = datetime(y, mo, d)
+        except ValueError:
+            continue
+        if date < cutoff:
+            continue
+        full_url = urljoin(page_url, href)
+        if full_url in seen_urls:
+            continue
+        seen_urls.add(full_url)
+        title = a.get_text(strip=True)
+        if not title or len(title) < 4:
+            continue
+        parsed = urlparse(full_url)
+        base_parsed = urlparse(base_url)
+        if parsed.netloc and parsed.netloc != base_parsed.netloc:
+            if "shinkin.co.jp" not in parsed.netloc and "shinkin.co.jp" not in base_parsed.netloc:
+                continue
+        results.append(PressRelease(
+            institution=institution["name"],
+            institution_type=institution["type"],
+            title=title,
+            url=full_url,
+            date=date,
+        ))
+
     return results
 
 
@@ -231,8 +308,9 @@ def _try_html(institution: dict, cutoff: datetime) -> List[PressRelease]:
         if not resp:
             continue
 
-        soup = BeautifulSoup(resp.content, "lxml")
-        results = _extract_from_soup(institution, soup, url, cutoff)
+        soup = BeautifulSoup(resp.text, "lxml")
+        resolve_url = institution.get("link_base", url)
+        results = _extract_from_soup(institution, soup, resolve_url, cutoff)
 
         if results:
             logger.info(f"{institution['name']}: HTMLから{len(results)}件取得 ({url})")
