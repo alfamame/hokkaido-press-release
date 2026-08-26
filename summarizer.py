@@ -95,7 +95,7 @@ def build_email_body(releases: List[PressRelease], today: datetime) -> tuple[str
 <h2 style="color:#1a5276;">北海道金融機関 プレスリリース速報</h2>
 <p style="color:#666;">{date_str}（{weekday}）</p>
 <hr>
-<p>本日（過去30時間以内）の新着プレスリリースはありませんでした。</p>
+<p>未送信の新着プレスリリースはありませんでした。</p>
 </body></html>
 """
         return subject, html

@@ -22,6 +22,7 @@ from pathlib import Path
 from config import (
     ANTHROPIC_API_KEY,
     LOG_FILE,
+    LOOKBACK_DAYS,
     RECIPIENT_EMAIL,
     SEEN_RELEASES_FILE,
 )
@@ -91,7 +92,11 @@ def main():
     days_back = 3 if weekday == 0 else 1
     target_date = (today - timedelta(days=days_back)).date()
 
-    logger.info(f"対象機関数: {len(INSTITUTIONS)}、収集対象日: {target_date}（前営業日）")
+    start_date = target_date - timedelta(days=max(1, LOOKBACK_DAYS) - 1)
+    logger.info(
+        f"対象機関数: {len(INSTITUTIONS)}、収集対象日: {target_date}（前営業日）"
+        f"／収集範囲: {start_date}〜{target_date}（{LOOKBACK_DAYS}日分）"
+    )
     if args.test:
         logger.info("[テストモード] メールは送信しません")
 

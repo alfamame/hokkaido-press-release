@@ -13,7 +13,7 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 
-from config import REQUEST_TIMEOUT, REQUEST_DELAY
+from config import REQUEST_TIMEOUT, REQUEST_DELAY, LOOKBACK_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,18 @@ _REIWA_BASE = 2018
 
 # URLに埋め込まれた日付パターン（例: _20260331.pdf, -20260219.html）
 URL_DATE_PATTERN = re.compile(r'[_\-](\d{4})(\d{2})(\d{2})(?:[_.\-]|$)')
+
+# onclick="window.open('URL', ...)" から遷移先を取り出すパターン
+# （href が壊れており onclick 側が正しい機関向け。留萌信用金庫など）
+ONCLICK_URL_PATTERN = re.compile(r"""window\.open\(\s*['"]([^'"]+)['"]""")
+
+# 機関ごとの news_paths で見つからなかった場合に試す共通パス
+COMMON_NEWS_PATHS = [
+    "/news/index.html", "/topics/index.html",
+    "/information/", "/release/", "/pr/",
+    "/newsrelease/", "/pressrelease/",
+    "/",
+]
 
 
 @dataclass
@@ -90,6 +102,15 @@ def _fetch(url: str) -> Optional[requests.Response]:
     except requests.RequestException as e:
         logger.debug(f"リクエスト失敗 {url}: {e}")
     return None
+
+
+def _href_of(institution: dict, link_tag) -> str:
+    """<a>タグから遷移先URLを取り出す（link_from_onclick 指定時は onclick を優先）"""
+    if institution.get("link_from_onclick"):
+        m = ONCLICK_URL_PATTERN.search(link_tag.get("onclick", "") or "")
+        if m:
+            return m.group(1).strip()
+    return (link_tag.get("href") or "").strip()
 
 
 def _try_rss(institution: dict, cutoff: datetime) -> List[PressRelease]:
@@ -172,7 +193,7 @@ def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cu
         if not link_tag:
             continue
 
-        href = link_tag["href"].strip()
+        href = _href_of(institution, link_tag)
         if not href or href.startswith("#") or href.startswith("javascript"):
             continue
 
@@ -220,7 +241,7 @@ def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cu
         link_tag = dd_tag.find("a", href=True)
         if not link_tag:
             continue
-        href = link_tag["href"].strip()
+        href = _href_of(institution, link_tag)
         if not href or href.startswith("#") or href.startswith("javascript"):
             continue
         full_url = urljoin(page_url, href)
@@ -283,26 +304,27 @@ def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cu
     return results
 
 
-def _try_html(institution: dict, cutoff: datetime) -> List[PressRelease]:
-    """HTMLページからプレスリリースを取得"""
-    base = institution["url"].rstrip("/")
-
-    # デフォルトのニュースページパスも追加
-    paths = institution.get("news_paths", []) + [
-        "/news/index.html", "/topics/index.html",
-        "/information/", "/release/", "/pr/",
-        "/newsrelease/", "/pressrelease/",
-        "/",
-    ]
-    # 重複を除去しながら順序を保持
-    seen_paths = set()
-    unique_paths = []
+def _unique(paths: list) -> list:
+    """重複を除去しながら順序を保持する"""
+    seen = set()
+    result = []
     for p in paths:
-        if p not in seen_paths:
-            seen_paths.add(p)
-            unique_paths.append(p)
+        if p not in seen:
+            seen.add(p)
+            result.append(p)
+    return result
 
-    for path in unique_paths:
+
+def _scan_paths(institution: dict, paths: list, cutoff: datetime, collect_all: bool) -> List[PressRelease]:
+    """指定パスを順に走査する。collect_all=False なら最初にヒットしたパスで打ち切る"""
+    base = institution["url"].rstrip("/")
+    results = []
+    seen_urls = set()
+
+    for i, path in enumerate(paths):
+        if i:
+            time.sleep(0.3)
+
         url = base + path
         resp = _fetch(url)
         if not resp:
@@ -310,29 +332,56 @@ def _try_html(institution: dict, cutoff: datetime) -> List[PressRelease]:
 
         soup = BeautifulSoup(resp.text, "lxml")
         resolve_url = institution.get("link_base", url)
-        results = _extract_from_soup(institution, soup, resolve_url, cutoff)
+        found = [r for r in _extract_from_soup(institution, soup, resolve_url, cutoff)
+                 if r.url not in seen_urls]
+        if not found:
+            continue
 
-        if results:
-            logger.info(f"{institution['name']}: HTMLから{len(results)}件取得 ({url})")
-            return results
+        seen_urls.update(r.url for r in found)
+        results.extend(found)
+        logger.info(f"{institution['name']}: HTMLから{len(found)}件取得 ({url})")
 
-        time.sleep(0.3)
+        if not collect_all:
+            break
 
-    return []
+    return results
 
 
-def fetch_all(institutions: list, target_date: date = None) -> List[PressRelease]:
+def _try_html(institution: dict, cutoff: datetime) -> List[PressRelease]:
+    """HTMLページからプレスリリースを取得
+
+    multi_paths=True の機関は news_paths を全て走査してマージする
+    （ニュース枠がページごとに分かれている網走・留萌などに対応）。
+    """
+    configured = _unique(institution.get("news_paths", []))
+    multi = bool(institution.get("multi_paths"))
+
+    results = _scan_paths(institution, configured, cutoff, collect_all=multi)
+    if results:
+        return results
+
+    # 機関固有のパスで取れなければ共通パスを順に試す
+    fallback = [p for p in COMMON_NEWS_PATHS if p not in configured]
+    return _scan_paths(institution, fallback, cutoff, collect_all=False)
+
+
+def fetch_all(institutions: list, target_date: date = None,
+              lookback_days: int = None) -> List[PressRelease]:
     """
     全金融機関のプレスリリースを収集して返す。
 
-    target_date: 収集対象の日付（指定した日のリリースのみ返す）
-                 省略時は過去48時間分を返す。
+    target_date:   収集対象日（省略時は前日）
+    lookback_days: target_date から遡って何日分を対象にするか（省略時は config の値）。
+                   掲載が遅れた記事を取りこぼさないための幅で、重複は既読URLフィルタが防ぐ。
     """
     if target_date is None:
         target_date = (datetime.now() - timedelta(days=1)).date()
+    if lookback_days is None:
+        lookback_days = LOOKBACK_DAYS
 
-    # 収集範囲: target_date の前日 00:00 を下限にして余裕を持って取得
-    cutoff = datetime.combine(target_date - timedelta(days=1), datetime.min.time())
+    start_date = target_date - timedelta(days=max(1, lookback_days) - 1)
+    # 収集範囲: 開始日のさらに前日 00:00 を下限にして余裕を持って取得
+    cutoff = datetime.combine(start_date - timedelta(days=1), datetime.min.time())
     all_releases = []
 
     for inst in institutions:
@@ -342,14 +391,15 @@ def fetch_all(institutions: list, target_date: date = None) -> List[PressRelease
             if not releases:
                 releases = _try_html(inst, cutoff)
 
-            # target_date の日付のみに絞る
-            releases = [r for r in releases if r.date and r.date.date() == target_date]
+            # start_date〜target_date の範囲に絞る（未来日付の誤検出は除外）
+            releases = [r for r in releases
+                        if r.date and start_date <= r.date.date() <= target_date]
 
             if releases:
                 all_releases.extend(releases)
                 logger.info(f"{inst['name']}: {len(releases)}件のプレスリリースを取得")
             else:
-                logger.info(f"{inst['name']}: {target_date} 付の新着プレスリリースなし")
+                logger.info(f"{inst['name']}: {start_date}〜{target_date} の新着プレスリリースなし")
 
         except Exception as e:
             logger.error(f"{inst['name']}: 収集エラー - {e}", exc_info=True)

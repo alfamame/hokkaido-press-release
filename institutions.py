@@ -1,5 +1,11 @@
 # 北海道内金融機関リスト
-# news_paths: プレスリリース・お知らせページのURLパス候補（優先順）
+#
+# news_paths:        プレスリリース・お知らせページのURLパス候補（優先順）
+# rss_paths:         RSSフィードのパス候補
+# multi_paths:       True なら news_paths を全て走査してマージする（ニュース枠が複数ある機関向け）
+#                    未指定なら最初にヒットしたパスで打ち切る
+# link_base:         一覧ページ内の相対リンクを解決する基準URL（ページURLと基準がずれる機関向け）
+# link_from_onclick: True なら <a> の href ではなく onclick の window.open() のURLを使う
 
 INSTITUTIONS = [
     # ===== 銀行 =====
@@ -30,7 +36,7 @@ INSTITUTIONS = [
         "name": "室蘭信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/muroshin",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/_news/history.html", "/news/", "/topics/", "/info/", "/"],
         "rss_paths": [],
     },
     {
@@ -51,14 +57,16 @@ INSTITUTIONS = [
         "name": "北門信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/hokumon",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/_news/history.html", "/news.html", "/"],
         "rss_paths": [],
+        # _news/history.html のリンクが親ディレクトリ(hokumon/)基準の相対パスのため
+        "link_base": "https://www.shinkin.co.jp/hokumon/",
     },
     {
         "name": "伊達信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/dateshin",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        "news_paths": ["/_news/history.html", "/news/", "/topics/", "/info/", "/"],
         "rss_paths": [],
     },
     {
@@ -107,8 +115,12 @@ INSTITUTIONS = [
         "name": "留萌信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/rumoi",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        # お知らせはトップページのiframe内CGIで配信されている（大切なお知らせ／新着情報の2枠）
+        "news_paths": ["/cgi-bin/new_info.cgi", "/cgi-bin/new_whats.cgi"],
         "rss_paths": [],
+        "multi_paths": True,
+        # href が末尾に ";" の付いた無効URLのため、onclick の window.open() 側を使う
+        "link_from_onclick": True,
     },
     {
         "name": "北星信用金庫",
@@ -151,8 +163,15 @@ INSTITUTIONS = [
         "name": "網走信用金庫",
         "type": "信用金庫",
         "url": "https://www.shinkin.co.jp/abashiri",
-        "news_paths": ["/news/", "/topics/", "/info/", "/"],
+        # ニュース枠がトップページ上に4本並んでおり、それぞれ別の一覧ページを持つ
+        "news_paths": [
+            "/_news/history.html",
+            "/_news-1/history.html",
+            "/_news-2/history.html",
+            "/_news-3/history.html",
+        ],
         "rss_paths": [],
+        "multi_paths": True,
     },
     {
         "name": "遠軽信用金庫",
