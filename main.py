@@ -1,5 +1,5 @@
 """
-北海道内金融機関 プレスリリース自動収集・要約・メール送信スクリプト
+金融機関 プレスリリース自動収集・要約・メール送信スクリプト
 毎朝7時にWindowsタスクスケジューラから実行される想定
 
 動作ルール:
@@ -70,7 +70,7 @@ def filter_new_releases(releases: list[PressRelease], seen_urls: set) -> list[Pr
 
 
 def main():
-    parser = argparse.ArgumentParser(description="北海道金融機関 プレスリリース自動収集・送信")
+    parser = argparse.ArgumentParser(description="金融機関 プレスリリース自動収集・送信")
     parser.add_argument("--test", action="store_true", help="テストモード（メール送信しない）")
     parser.add_argument("--force", action="store_true", help="曜日・既読フィルタをスキップ（動作確認用）")
     args = parser.parse_args()
@@ -79,7 +79,7 @@ def main():
     weekday = today.weekday()  # 0=月, 1=火, ..., 5=土, 6=日
 
     logger.info("=" * 60)
-    logger.info("北海道金融機関 プレスリリース収集開始")
+    logger.info("金融機関 プレスリリース収集開始")
 
     # 土・日は配信しない（--force で強制実行可）
     if weekday >= 5 and not args.force:

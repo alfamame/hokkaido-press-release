@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ### 実行フロー（main.py）
 
 1. **曜日判定** — 土・日はスキップ。月曜は「前営業日 = 金曜」として3日前を対象日とする
-2. **スクレイピング**（scraper.py）— 各機関を RSS → HTML フォールバックの順で試行し、対象日から遡って `LOOKBACK_DAYS` 日分のプレスリリースを返す
+2. **スクレイピング**（scraper.py）— 各機関を RSS → JSON → HTML の順で試行し、対象日から遡って `LOOKBACK_DAYS` 日分のプレスリリースを返す
 3. **既読フィルタ**（seen_releases.json）— `--force` なしの場合、送信済みURLを除外。収集期間に幅があるぶん、重複送信はこのフィルタが防ぐ
 4. **要約**（summarizer.py）— Claude API（claude-haiku-4-5-20251001）でまとめてバッチ要約、JSON形式で返却
 5. **メール送信**（mailer.py）— Gmail SMTP（アプリパスワード認証）でHTML形式送信
@@ -39,6 +39,7 @@ pip install -r requirements.txt
 ### スクレイピング戦略（scraper.py）
 
 - RSS優先: 機関ごとの `rss_paths` + 共通パス（`/rss/`, `/feed/` 等）を試行
+- **JSONフィード**: `json_feed` を持つ機関のみ、RSSの次に試行。お知らせ一覧をJavaScriptで描画していてHTMLからは抽出できない機関向け（京都中央信用金庫）
 - HTMLフォールバック: まず機関ごとの `news_paths` を試し、収穫ゼロなら共通パス（`COMMON_NEWS_PATHS`）を試す。`<li>/<tr>/<article>` 等から日付付きリンクを抽出
 - **複数ニュース枠**: `multi_paths: True` の機関は `news_paths` を全て走査してURL単位で重複除去しつつマージする（未指定なら最初にヒットしたパスで打ち切り）。網走信用金庫のようにニュース一覧が複数ページに分かれている機関向け
 - **収集期間**: 対象日から遡って `LOOKBACK_DAYS`（config.py、既定7日）日分を対象にする。掲載日を遡ってアップされた記事の取りこぼしを防ぐため幅を持たせており、未来日付は除外する。取得カットオフは開始日のさらに前日00:00
@@ -70,8 +71,22 @@ summary: str = ""       # Claude APIによる要約（初期値は空文字）
     "multi_paths": True,        # news_paths を全て走査してマージする（ニュース枠が複数ある機関）
     "link_base": "https://...", # 一覧ページ内の相対リンクを解決する基準URL
     "link_from_onclick": True,  # href ではなく onclick の window.open() のURLを使う
+    "json_feed": {...},         # JSONフィードから取得する（下記参照）
 }
 ```
+
+`json_feed` は一覧をJavaScriptで描画する機関で使う。設定例（京都中央信用金庫）:
+```python
+"json_feed": {
+    "paths": ["/common/js/data/news_list_{fy}.json"],  # {fy}は年度に展開（当年度＋前年度）
+    "date_key": "v_update",                  # 日付フィールド（YYYYMMDD等）
+    "title_key": "v_title",                  # タイトルフィールド
+    "url_keys": ["v_pdf", "v_external_link"],# 先に見つかった非空の値をリンクにする
+    "detail_path": "/news/{v_id}.html",      # url_keys が全て空のときの詳細ページ
+    "require": {"v_release_flg": "〇"},       # この条件を全て満たす項目のみ対象
+}
+```
+`{fy}` は年度（4月始まり）に展開され、年度替わりをまたいでも取りこぼさないよう当年度と前年度の2ファイルを取得する。
 
 `link_base` は、一覧ページのURLと相対リンクの基準がずれている機関で使う（釧路・北門の `_news/history.html` は親ディレクトリ基準のため、指定しないとパスが二重になり404になる）。
 `link_from_onclick` は `href` が壊れている機関で使う（留萌の一覧CGIは `href` の末尾に `;` が付いた無効URLで、正しい遷移先は `onclick` 側にある）。

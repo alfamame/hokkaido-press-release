@@ -21,7 +21,7 @@ def _build_prompt(releases: List[PressRelease], today: datetime) -> str:
 
     lines = []
     lines.append(f"今日は{date_str}です。")
-    lines.append("以下は北海道内の金融機関（銀行・信用金庫・信用組合）のプレスリリース・お知らせ一覧です。")
+    lines.append("以下は金融機関（銀行・信用金庫・信用組合）のプレスリリース・お知らせ一覧です。")
     lines.append("各項目について、ビジネス担当者向けに重要ポイントを1〜2文で日本語要約してください。")
     lines.append("要約後、以下のJSON形式で返してください：\n")
     lines.append('{"summaries": [{"index": 0, "summary": "要約文"}, ...]}')
@@ -87,12 +87,12 @@ def build_email_body(releases: List[PressRelease], today: datetime) -> tuple[str
     """メール件名と本文（HTML）を生成して返す"""
     date_str = today.strftime("%Y年%m月%d日")
     weekday = _weekday_ja(today.weekday())
-    subject = f"【北海道金融機関 プレスリリース速報】{date_str}（{weekday}）"
+    subject = f"【金融機関 プレスリリース速報】{date_str}（{weekday}）"
 
     if not releases:
         html = f"""
 <html><body style="font-family: Meiryo, 'MS PGothic', sans-serif; color: #333;">
-<h2 style="color:#1a5276;">北海道金融機関 プレスリリース速報</h2>
+<h2 style="color:#1a5276;">金融機関 プレスリリース速報</h2>
 <p style="color:#666;">{date_str}（{weekday}）</p>
 <hr>
 <p>未送信の新着プレスリリースはありませんでした。</p>
@@ -117,7 +117,7 @@ def build_email_body(releases: List[PressRelease], today: datetime) -> tuple[str
     body_parts.append(f"""
 <html><body style="font-family: Meiryo, 'MS PGothic', sans-serif; color: #333; max-width: 800px; margin: 0 auto;">
 <h2 style="color:#1a5276; border-bottom: 3px solid #1a5276; padding-bottom: 8px;">
-  北海道金融機関 プレスリリース速報
+  金融機関 プレスリリース速報
 </h2>
 <p style="color:#666; margin-top: -8px;">{date_str}（{weekday}）｜合計 {len(releases)} 件</p>
 """)

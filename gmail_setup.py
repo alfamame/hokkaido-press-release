@@ -37,7 +37,7 @@ def test_send():
         return
 
     to = RECIPIENT_EMAIL or GMAIL_ADDRESS
-    subject = "【テスト】北海道金融機関プレスリリース Bot"
+    subject = "【テスト】金融機関プレスリリース Bot"
     body = "このメールはテスト送信です。正常に動作しています。"
 
     msg = MIMEMultipart()

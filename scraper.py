@@ -1,6 +1,7 @@
 """
 各金融機関のウェブサイトからプレスリリース・お知らせを収集するモジュール
 """
+import json
 import re
 import time
 import logging
@@ -164,6 +165,95 @@ def _try_rss(institution: dict, cutoff: datetime) -> List[PressRelease]:
             logger.debug(f"RSS失敗 {feed_url}: {e}")
 
     return []
+
+
+def _fiscal_years(today: date = None) -> List[int]:
+    """年度（4月始まり）を新しい順に当年度・前年度の2つ返す"""
+    today = today or datetime.now().date()
+    fy = today.year if today.month >= 4 else today.year - 1
+    return [fy, fy - 1]
+
+
+def _try_json(institution: dict, cutoff: datetime) -> List[PressRelease]:
+    """JSONフィードからプレスリリースを取得
+
+    お知らせ一覧をJavaScriptで描画する機関向け（京都中央信用金庫など）。
+    json_feed の設定でキー名とリンクの組み立て方を指定する。
+    """
+    conf = institution.get("json_feed")
+    if not conf:
+        return []
+
+    base = institution["url"].rstrip("/")
+    results = []
+    seen_urls = set()
+
+    # {fy} を年度に展開（年度替わりをまたぐため当年度と前年度を取得する）
+    paths = []
+    for template in conf.get("paths", []):
+        if "{fy}" in template:
+            paths.extend(template.replace("{fy}", str(fy)) for fy in _fiscal_years())
+        else:
+            paths.append(template)
+
+    for path in _unique(paths):
+        resp = _fetch(base + path)
+        if not resp:
+            continue
+        try:
+            items = json.loads(resp.text)
+        except ValueError as e:
+            logger.debug(f"JSON解析失敗 {base + path}: {e}")
+            continue
+
+        found = 0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            # 公開フラグ等の条件をすべて満たすものだけ対象にする
+            if any(item.get(k) != v for k, v in conf.get("require", {}).items()):
+                continue
+
+            pub_dt = _parse_date(str(item.get(conf["date_key"], "")))
+            if not pub_dt or pub_dt < cutoff:
+                continue
+
+            title = str(item.get(conf["title_key"], "")).strip()
+            if not title:
+                continue
+
+            # リンクは url_keys の先に見つかった非空の値、無ければ詳細ページを組み立てる
+            href = ""
+            for key in conf.get("url_keys", []):
+                if item.get(key):
+                    href = str(item[key]).strip()
+                    break
+            if not href and conf.get("detail_path"):
+                try:
+                    href = conf["detail_path"].format(**item)
+                except (KeyError, IndexError):
+                    href = ""
+            if not href:
+                continue
+
+            full_url = urljoin(base + "/", href)
+            if full_url in seen_urls:
+                continue
+            seen_urls.add(full_url)
+
+            results.append(PressRelease(
+                institution=institution["name"],
+                institution_type=institution["type"],
+                title=title,
+                url=full_url,
+                date=pub_dt,
+            ))
+            found += 1
+
+        if found:
+            logger.info(f"{institution['name']}: JSONから{found}件取得 ({base + path})")
+
+    return results
 
 
 def _extract_from_soup(institution: dict, soup: BeautifulSoup, page_url: str, cutoff: datetime) -> List[PressRelease]:
@@ -388,6 +478,8 @@ def fetch_all(institutions: list, target_date: date = None,
         logger.info(f"収集開始: {inst['name']}")
         try:
             releases = _try_rss(inst, cutoff)
+            if not releases:
+                releases = _try_json(inst, cutoff)
             if not releases:
                 releases = _try_html(inst, cutoff)
 
