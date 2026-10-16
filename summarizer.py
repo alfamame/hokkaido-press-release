@@ -1,7 +1,9 @@
 """
 Claude APIを使ってプレスリリースを要約し、メール本文を生成するモジュール
 """
+import json
 import logging
+import re
 from datetime import datetime
 from typing import List
 
@@ -13,7 +15,15 @@ from scraper import PressRelease
 logger = logging.getLogger(__name__)
 
 # 要約に使うモデル（コスト効率重視ならHaiku、品質重視ならSonnet）
-MODEL = "claude-haiku-4-5-20251001"
+MODEL = "claude-haiku-5-5"
+
+# Haiku 5.5 はアダプティブ思考が既定ONで既定 effort が medium。
+# タイトルの短文要約に深い思考は不要なので最小に落とす。
+EFFORT = "low"
+
+# 思考トークンも max_tokens を消費するため余裕を持たせる。
+# 不足すると応答が途中で切れ、JSONが壊れて要約が全滅する。
+MAX_TOKENS = 8192
 
 
 def _build_prompt(releases: List[PressRelease], today: datetime) -> str:
@@ -55,16 +65,26 @@ def summarize(releases: List[PressRelease]) -> List[PressRelease]:
 
     prompt = _build_prompt(releases, today)
 
+    applied = 0
+
     try:
         message = client.messages.create(
             model=MODEL,
-            max_tokens=4096,
+            max_tokens=MAX_TOKENS,
+            output_config={"effort": EFFORT},
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+
+        if message.stop_reason == "max_tokens":
+            logger.warning(
+                f"応答が max_tokens({MAX_TOKENS}) で打ち切られました。要約が欠落します。"
+            )
+
+        # アダプティブ思考が有効だと content[0] が thinking ブロックになり得るため、
+        # text ブロックだけを連結する（content[0].text 固定だと AttributeError になる）
+        raw = "".join(b.text for b in message.content if b.type == "text")
 
         # JSON部分を抽出
-        import json, re
         json_match = re.search(r'\{[\s\S]*\}', raw)
         if json_match:
             data = json.loads(json_match.group())
@@ -72,13 +92,24 @@ def summarize(releases: List[PressRelease]) -> List[PressRelease]:
             for i, release in enumerate(releases):
                 if i in summaries:
                     release.summary = summaries[i]
+                    applied += 1
+        else:
+            logger.warning(f"応答からJSONを抽出できませんでした: {raw[:200]!r}")
 
-        logger.info(f"要約完了: {len(releases)}件")
+        logger.info(f"要約完了: {applied}/{len(releases)}件")
 
     except anthropic.APIError as e:
         logger.error(f"Claude API エラー: {e}")
     except Exception as e:
         logger.error(f"要約処理エラー: {e}", exc_info=True)
+
+    # 要約が1件も付かなくてもメールは「要約なし」で送信されてしまい気づきにくい。
+    # モデル廃止や応答形式の変更を検知できるよう警告を残す。
+    if not applied:
+        logger.warning(
+            f"要約が1件も付与されませんでした（対象{len(releases)}件）。"
+            f"モデルID({MODEL})と応答形式を確認してください。"
+        )
 
     return releases
 

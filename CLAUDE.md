@@ -32,7 +32,7 @@ pip install -r requirements.txt
 1. **曜日判定** — 土・日はスキップ。月曜は「前営業日 = 金曜」として3日前を対象日とする
 2. **スクレイピング**（scraper.py）— 各機関を RSS → JSON → HTML の順で試行し、対象日から遡って `LOOKBACK_DAYS` 日分のプレスリリースを返す
 3. **既読フィルタ**（seen_releases.json）— `--force` なしの場合、送信済みURLを除外。収集期間に幅があるぶん、重複送信はこのフィルタが防ぐ
-4. **要約**（summarizer.py）— Claude API（claude-haiku-4-5-20251001）でまとめてバッチ要約、JSON形式で返却
+4. **要約**（summarizer.py）— Claude API（claude-haiku-5-5）でまとめてバッチ要約、JSON形式で返却
 5. **メール送信**（mailer.py）— Gmail SMTP（アプリパスワード認証）でHTML形式送信
 6. **既読URL更新** — 送信成功時のみ seen_releases.json を更新。`--test` モードでは更新しない
 
@@ -100,6 +100,8 @@ summary: str = ""       # Claude APIによる要約（初期値は空文字）
 ### 要約・メール本文生成（summarizer.py）
 
 - `summarize()`: 全プレスリリースを1回のAPIコール（バッチ）でまとめて要約。レスポンスはJSON形式で受け取り、インデックスで各 `PressRelease.summary` に紐付ける。API失敗時は要約なしでそのまま処理続行
+- モデル定数は `MODEL` / `EFFORT` / `MAX_TOKENS`。Haiku 5.5 はアダプティブ思考が既定ONなので `output_config={"effort": "low"}` で思考を抑え、思考トークン分を見込んで `MAX_TOKENS` に余裕を持たせている。思考が有効だと `content[0]` が thinking ブロックになり得るため、レスポンスは type が `text` のブロックのみを連結して取り出す
+- 要約が1件も付与できなかった場合（モデル廃止・応答形式変更など）は警告ログを出す。メール自体は「要約なし」で送信されてしまい気づきにくいため
 - `build_email_body()`: 機関種別（銀行→信用金庫→信用組合）でグループ化したHTML本文と件名を返す。種別ごとにカラーコードで色分けされる
 
 ### 環境変数（.env）
