@@ -120,7 +120,7 @@ GitHub Actions では同名の Secrets（Settings → Secrets and variables → 
 
 ### 自動実行
 
-- **GitHub Actions**（`.github/workflows/daily.yml`）: UTC 22:00（JST 7:00）月〜金に実行。`seen_releases.json` をコミット・プッシュして既読状態を永続化する。`workflow_dispatch` で手動実行も可能
+- **GitHub Actions**（`.github/workflows/daily.yml`）: UTC 17:55（JST 2:55）月〜金に実行。GitHub の schedule 発火は平均95分・最大8時間遅延するため、名目時刻を前倒ししてある（実測ベース）。`seen_releases.json` をコミット・プッシュして既読状態を永続化する。`workflow_dispatch` で手動実行も可能
 - **Windows タスクスケジューラ**（`setup_task.bat`）: ローカル実行用の代替手段
 
 ### 状態管理ファイル
